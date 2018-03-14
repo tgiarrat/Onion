@@ -3,7 +3,7 @@
 
 CC= gcc
 CFLAGS= -g -Wall
-LIBS = 
+LIBS = -lcrypto
 
 #append a 32 to executable name if on a 32 bit machine
 FILE = 
@@ -21,7 +21,7 @@ all:  $(FILE) onion$(FILE)
 	rm -f *.o
 	
 onion$(FILE): onion_router.c networks.o gethostbyname6.o
-	$(CC) $(CFLAGS) -o onion$(FILE) onion_router.c networks.o gethostbyname6.o $(LIBS)
+	$(CC) $(CFLAGS) -o onion$(FILE) onion_router.c rsa.c networks.o gethostbyname6.o $(LIBS)
 
 
 .c.o:

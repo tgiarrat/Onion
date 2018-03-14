@@ -21,26 +21,28 @@ int clientSockets[MAX_SOCKETS];
 
 char *serverString = "127.0.0.1";
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
-    if (argc > 1) {
+    if (argc > 1)
+    {
         serverString = argv[1];
-        printf("%s\n",serverString);
+        printf("%s\n", serverString);
     }
 
     init();
 
-    FILE *pub = fopen("id_rsa.pub","w+");
-    FILE *priv = fopen("id_rsa","w+");
+    FILE *pub = fopen("id_rsa.pub", "w+");
+    FILE *priv = fopen("id_rsa", "w+");
 
-    if (!keyExists(priv)) {
+    if (!keyExists(priv))
+    {
         RSA *key = genkey();
-        writePublicKey(key,pub);
-        writePrivateKey(key,priv);
+        writePublicKey(key, pub);
+        writePrivateKey(key, priv);
         RSA_free(key);
         postPublicKey(serverString, pub);
     }
-
 
     int serverSocket = 0; // socket descriptor for the server socket
     int startSocket = 0;
@@ -55,127 +57,152 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void runRouter(int serverSocket, int portNumber, int startSocket) {
+void runRouter(int serverSocket, int portNumber, int startSocket)
+{
     fd_set rfds;
     int itr;
     struct clientNode *curNode = NULL;
     struct clientNode *headClientNode = curNode;
     int maxSocket =
-            serverSocket; // need this because we are going to loop throug hte set of
+        serverSocket; // need this because we are going to loop throug hte set of
     // sockets used and we need to know where to stop looking
     int ret;
     int numHops = 0; // change this obv
 
-    for (itr = 0; itr < MAX_SOCKETS; itr++) {
+    for (itr = 0; itr < MAX_SOCKETS; itr++)
+    {
         clientSockets[itr] = -1;
     }
 
-    if (startSocket > maxSocket) {
+    if (startSocket > maxSocket)
+    {
         maxSocket = startSocket;
     }
-    while (1) {
+    while (1)
+    {
         printf("here\n");
         FD_ZERO(&rfds);
         FD_SET(serverSocket, &rfds); // watch socket for update
         FD_SET(startSocket, &rfds);
         // go through list of connected clients and watch each of the sockets
         curNode = headClientNode;
-        while (curNode != NULL) {
+        while (curNode != NULL)
+        {
             FD_SET(curNode->port_pair.in_socket, &rfds);
-            if (maxSocket < curNode->port_pair.in_socket) {
+            if (maxSocket < curNode->port_pair.in_socket)
+            {
                 maxSocket = curNode->port_pair.in_socket;
             }
             curNode = curNode->next;
         }
-        if (select(maxSocket + 1, &rfds, NULL, NULL, NULL) < 0) {
+        if (select(maxSocket + 1, &rfds, NULL, NULL, NULL) < 0)
+        {
             perror("server select call error");
             exit(-1);
         }
         // incoming starting node data
-        if (FD_ISSET(startSocket, &rfds)) {
+        if (FD_ISSET(startSocket, &rfds))
+        {
             printf("new start node being accepted\n");
             newStart(startSocket, &headClientNode, numHops);
         }
         // new connection to server socket
-        if (FD_ISSET(serverSocket, &rfds)) {
+        if (FD_ISSET(serverSocket, &rfds))
+        {
             printf("new connection being accepted\n");
             newConnection(serverSocket, &headClientNode);
         }
         // now check for client activity by looping through the set of sockets
         curNode = headClientNode;
-        while (curNode != NULL) {
+        while (curNode != NULL)
+        {
             // check if curNode's socket is set
-            if (FD_ISSET(curNode->port_pair.in_socket, &rfds)) {
-                printf("client activity\n");
-                ret = clientActivity(curNode->port_pair.in_socket, &headClientNode);
-                if (ret > 0) {
-                    curNode = NULL;
+            if (FD_ISSET(curNode->port_pair.in_socket, &rfds))
+            {
+                if (curNode->nodeType < 0)
+                {
+                    printf("start node activitiy\n");
+                    ret = startClientActivity(curNode, numHops);
                 }
+                printf("client activity\n");
+                ret = clientActivity(curNode);
             }
-            if (curNode != NULL) {
+            if (curNode != NULL)
+            {
                 curNode = curNode->next;
             }
         }
     }
 }
 
-void removeClientSocket(int clientSocket) {
+void removeClientSocket(int clientSocket)
+{
     int itr = 0;
 
-    for (; itr < MAX_SOCKETS; itr++) {
-        if (clientSockets[itr] == clientSocket) {
+    for (; itr < MAX_SOCKETS; itr++)
+    {
+        if (clientSockets[itr] == clientSocket)
+        {
             clientSockets[itr] = -1;
             itr = MAX_SOCKETS + 1;
         }
     }
 }
 
-void setClientSocket(int clientSocket) {
+void setClientSocket(int clientSocket)
+{
     int itr = 0;
 
-    for (; itr < MAX_SOCKETS; itr++) {
-        if (clientSockets[itr] < 0) {
+    for (; itr < MAX_SOCKETS; itr++)
+    {
+        if (clientSockets[itr] < 0)
+        {
             clientSockets[itr] = clientSocket;
             itr = MAX_SOCKETS + 1;
         }
     }
 }
 
-struct onionHeader getOnionHeader(int tmp_itr, int totalSize) {
+struct onionHeader getOnionHeader(int tmp_itr, int totalSize)
+{
     struct onionHeader header;
 
     // this is all temporary for now
-    switch (tmp_itr) {
-        case 0:
-            header.packetLength = htons(totalSize);
-            header.next_hop[0] = 208;
-            header.next_hop[1] = 94;
-            header.next_hop[2] = 62;
-            header.next_hop[3] = 131;
-        case 1:
-            header.packetLength = htons(totalSize - sizeof(struct onionHeader));
-            header.next_hop[0] = 208;
-            header.next_hop[1] = 94;
-            header.next_hop[2] = 62;
-            header.next_hop[3] = 132;
-        case 2:
-            header.packetLength = htons(totalSize - (sizeof(struct onionHeader) * 2));
-            header.next_hop[0] = 127;
-            header.next_hop[1] = 0;
-            header.next_hop[2] = 0;
-            header.next_hop[3] = 1;
+    switch (tmp_itr)
+    {
+    case 0:
+        header.packetLength = htons(totalSize);
+        header.next_hop[0] = 208;
+        header.next_hop[1] = 94;
+        header.next_hop[2] = 62;
+        header.next_hop[3] = 131;
+    case 1:
+        header.packetLength = htons(totalSize - sizeof(struct onionHeader));
+        header.next_hop[0] = 208;
+        header.next_hop[1] = 94;
+        header.next_hop[2] = 62;
+        header.next_hop[3] = 132;
+    case 2:
+        header.packetLength = htons(totalSize - (sizeof(struct onionHeader) * 2));
+        header.next_hop[0] = 127;
+        header.next_hop[1] = 0;
+        header.next_hop[2] = 0;
+        header.next_hop[3] = 1;
     }
     return header;
 }
 
-int buildHops(char *buf, int numHops, int bodySize) {
+int buildHops(char *buf, int numHops, int bodySize)
+{
     int array[numHops];
 
-    for (int i = 0; i < numHops; i++) {     // fill array
+    for (int i = 0; i < numHops; i++)
+    { // fill array
         array[i] = i;
     }
 
-    for (int i = 0; i < numHops; i++) {    // shuffle array
+    for (int i = 0; i < numHops; i++)
+    { // shuffle array
         int temp = array[i];
         int randomIndex = rand() % numHops;
 
@@ -185,16 +212,17 @@ int buildHops(char *buf, int numHops, int bodySize) {
 
     ip_list ips = getPublicKeys(serverString);
 
-    printf("first hop ip:%s",ips.ips[0]);
+    printf("first hop ip:%s", ips.ips[0]);
 
     uint16_t totalHeaderSize;
     int itr;
     struct onionHeader header;
 
     totalHeaderSize =
-            (numHops + 1) * sizeof(struct onionHeader); // plus 1 for the end hop
+        (numHops + 1) * sizeof(struct onionHeader); // plus 1 for the end hop
 
-    for (itr = 0; itr < numHops; itr++) {
+    for (itr = 0; itr < numHops; itr++)
+    {
         header = getOnionHeader(itr, totalHeaderSize + bodySize);
         memcpy(buf + (itr * sizeof(struct onionHeader)), &header,
                sizeof(struct onionHeader));
@@ -202,8 +230,8 @@ int buildHops(char *buf, int numHops, int bodySize) {
     return totalHeaderSize + bodySize;
 }
 
-
-void newStart(int startSocket, struct clientNode **head, int numHops) {
+void newStart(int startSocket, struct clientNode **head, int numHops)
+{
     uint16_t sendLength;
     int clientInSocket;
     int clientOutSocket;
@@ -212,7 +240,8 @@ void newStart(int startSocket, struct clientNode **head, int numHops) {
     char nextHopIp[4];
     char *outPort = "40501";
     if ((clientInSocket =
-                 accept(startSocket, (struct sockaddr *) 0, (socklen_t *) 0)) < 0) {
+             accept(startSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
+    {
         perror("accept call error");
         exit(-1);
     }
@@ -231,7 +260,8 @@ void newStart(int startSocket, struct clientNode **head, int numHops) {
     // add client
 }
 
-void newConnection(int serverSocket, struct clientNode **head) {
+void newConnection(int serverSocket, struct clientNode **head)
+{
     int clientInSocket;
     int clientOutSocket;
     uint16_t sendLength;
@@ -240,7 +270,8 @@ void newConnection(int serverSocket, struct clientNode **head) {
     char nextHopIp[4];
 
     if ((clientInSocket =
-                 accept(serverSocket, (struct sockaddr *) 0, (socklen_t *) 0)) < 0) {
+             accept(serverSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
+    {
         perror("accept call error");
         exit(-1);
     }
@@ -261,28 +292,34 @@ void newConnection(int serverSocket, struct clientNode **head) {
     sendPacket(clientOutSocket, buf, sendLength);
 }
 
-void addClientNode(struct clientNode **head, int in_socket, int out_socket) {
+void addClientNode(struct clientNode **head, int in_socket, int out_socket)
+{
     struct clientNode *newConnectionNode =
-            (struct clientNode *) calloc(1, sizeof(struct clientNode));
+        (struct clientNode *)calloc(1, sizeof(struct clientNode));
     struct clientNode *curNode;
 
     newConnectionNode->port_pair.in_socket = in_socket;
     newConnectionNode->port_pair.out_socket = out_socket;
     newConnectionNode->next = NULL;
 
-    if (*head == NULL) {
+    if (*head == NULL)
+    {
         *head = newConnectionNode;
-    } else {
+    }
+    else
+    {
         // iterate to the end of the list
         curNode = *head;
-        while (curNode->next != NULL) {
+        while (curNode->next != NULL)
+        {
             curNode = curNode->next;
         }
         curNode->next = newConnectionNode;
     }
 }
 
-int recieveStart(int socket, char *packet) {
+int recieveStart(int socket, char *packet)
+{
     int recvLen = -1;
 
     recvLen = recv(socket, packet, 2048, MSG_WAITALL);
@@ -291,12 +328,15 @@ int recieveStart(int socket, char *packet) {
     return recvLen;
 }
 
-int recievePacket(int socket, char *packet) {
+int recievePacket(int socket, char *packet)
+{
     uint16_t packetLength = 0;
     int recvLen = -1;
 
-    if ((recvLen = recv(socket, packet, sizeof(uint16_t), MSG_WAITALL)) < 2) {
-        if (recvLen <= 0) {
+    if ((recvLen = recv(socket, packet, sizeof(uint16_t), MSG_WAITALL)) < 2)
+    {
+        if (recvLen <= 0)
+        {
             return 1;
         }
     }
@@ -305,33 +345,40 @@ int recievePacket(int socket, char *packet) {
 
     recvLen += recv(socket, packet + sizeof(uint16_t),
                     packetLength - sizeof(uint16_t), MSG_WAITALL);
-    if (recvLen < packetLength) {
+    if (recvLen < packetLength)
+    {
         perror("error recieveing packet");
     }
     return 0;
 }
 
-int sendPacket(int out_socket, char *packet, int sendLength) {
+int sendPacket(int out_socket, char *packet, int sendLength)
+{
     int sent;
     // send packet:
     sent = send(out_socket, packet + sizeof(struct onionHeader), sendLength, 0);
-    if (sent < 0) {
+    if (sent < 0)
+    {
         perror("send call");
         exit(-1);
     }
-    if (sent == 0) {
+    if (sent == 0)
+    {
         perror("sent zero");
         exit(-1);
     }
     return 0;
 }
 
-int getOutSocket(int clientInSocket, struct clientNode *head) {
+int getOutSocket(int clientInSocket, struct clientNode *head)
+{
     struct clientNode *curNode;
     curNode = head;
 
-    while (curNode != NULL) {
-        if (curNode->port_pair.in_socket == clientInSocket) {
+    while (curNode != NULL)
+    {
+        if (curNode->port_pair.in_socket == clientInSocket)
+        {
             return curNode->port_pair.out_socket;
         }
         curNode = curNode->next;
@@ -339,29 +386,58 @@ int getOutSocket(int clientInSocket, struct clientNode *head) {
     return -1;
 }
 
-int isDest(struct onionHeader header) {
+int isDest(struct onionHeader header)
+{
     int itr;
 
-    for (itr = 0; itr < 4; itr++) {
-        if (header.next_hop[itr] != 0x00) {
+    for (itr = 0; itr < 4; itr++)
+    {
+        if (header.next_hop[itr] != 0x00)
+        {
             return 0;
         }
     }
     return 1;
 }
 
-int clientActivity(int clientInSocket, struct clientNode **head) {
+int startClientActivity(struct clientNode *startNode, uint16_t numHops)
+{
+    int clientInSocket;
+    int clientOutSocket;
+    uint16_t bodySize;
+    char buf[MAX_PACKET_SIZE];
+
+    clientInSocket = startNode->port_pair.in_socket;
+    clientOutSocket = startNode->port_pair.out_socket;
+
+    bodySize = recieveStart(clientInSocket, buf);
+    if (bodySize < 0)
+    {
+        perror("error recieving a starting packet!\n");
+        exit(-1);
+    }
+    buildHops(buf, numHops, bodySize);
+
+    return 0;
+}
+
+int clientActivity(struct clientNode *curNode)
+{
+    int clientInSocket;
     int clientOutSocket;
     uint16_t sendLength;
     char buf[MAX_PACKET_SIZE];
     struct onionHeader header;
 
-    clientOutSocket = getOutSocket(clientInSocket, *head);
-    if (clientOutSocket < 0) {
-        perror("Error getting matching out port\n");
-        exit(-1);
-    }
-    if (recievePacket(clientInSocket, buf) == 1) {
+    clientInSocket = curNode->port_pair.in_socket;
+    clientOutSocket = curNode->port_pair.out_socket;
+    //clientOutSocket = getOutSocket(clientInSocket, *head);
+    //if (clientOutSocket < 0) {
+    //    perror("Error getting matching out port\n");
+    //    exit(-1);
+    //}
+    if (recievePacket(clientInSocket, buf) == 1)
+    {
         perror("Error recieving packet\n");
         exit(-1);
     }
@@ -369,27 +445,31 @@ int clientActivity(int clientInSocket, struct clientNode **head) {
     memcpy(&header, buf, sizeof(struct onionHeader));
     sendLength = ntohs(header.packetLength);
     sendLength -= sizeof(struct onionHeader);
-    if (!isDest(header)) { // probably going to want some sort of check to see if
+    if (!isDest(header))
+    { // probably going to want some sort of check to see if
         // this is the final dest. maybe a hardcoded ip
         sendPacket(clientOutSocket, buf, sendLength);
-    } else {
+    }
+    else
+    {
         printf("DEST LOGIC HERE\n\n\n\n");
     }
     return 0;
 }
 
-char *getURL(char * head) {
-    char *pos = strrchr(head,':');
-    pos = strchr(pos,'\n');
-    return strchr(pos + 1,'\n') + 1;
+char *getURL(char *head)
+{
+    char *pos = strrchr(head, ':');
+    pos = strchr(pos, '\n');
+    return strchr(pos + 1, '\n') + 1;
 }
-char *getPort(char * head) {
-    if
-    char *pos = strchr(head,':');
-    pos = strchr(pos,'\n');
-    return strchr(pos + 1,'\n') + 1;
+char *getPort(char *head)
+{
+    char *pos = strchr(head, ':');
+    pos = strchr(pos, '\n');
+    return strchr(pos + 1, '\n') + 1;
 }
 
-void exitNode(char *packet) {
-
+void exitNode(char *packet)
+{
 }
