@@ -289,6 +289,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
         perror("accept call error");
         exit(-1);
     }
+
     struct clientNode *node = addClientNode(head, clientInSocket, 0, -1);
     pickHops(node, numHops);
     node->port_pair.out_socket = tcpClientSetup(nextHopIp, outPort, 0);
@@ -452,6 +453,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     packetSize = buildHops(packet + MAX_PACKET_SIZE - packetSize, numHops, packetSize, (struct entryClientNode *) startNode);
 
     sendPacket(startNode->port_pair.out_socket, packet + MAX_PACKET_SIZE - packetSize, packetSize);
+
     return 0;
 }
 
@@ -462,7 +464,7 @@ int clientActivity(struct clientNode *curNode)
     struct onionHeader *header;
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,0)) < 0)
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
@@ -476,7 +478,7 @@ int clientActivity(struct clientNode *curNode)
         //}
         len -= sizeof(struct onionHeader);
         header++;
-        send(curNode->port_pair.in_socket, (char *) header, (size_t) len, 0);
+        send(curNode->port_pair.out_socket, (char *) header, (size_t) len, 0);
     }
     return 0;
 }
@@ -534,6 +536,7 @@ void exitNode(char *packet, struct clientNode *node)
     }
     else
     {
+        send(node->port_pair.out_socket, packet, strlen(packet), 0);
         //no forward connect
     }
 }
