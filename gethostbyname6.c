@@ -40,10 +40,11 @@ char * getIPAddressString(uint8_t * ipAddress)
 
 uint8_t * getIPAddress(const char * hostName, struct sockaddr_in * aSockaddr) 
 {
+	return (uint8_t *)hostName;
 	// Puts host IPv6 (or mapped IPV) into the aSockaddr6 struct and return pointer to 16 byte address (NULL on error)
 	// Only pulls the first IP address from the list of possible addresses
 	
-	static uint8_t ipAddress[4];
+	/*static uint8_t ipAddress[4];
 	
 	uint8_t * returnValue = NULL;
 	int addrError = 0;
@@ -51,7 +52,7 @@ uint8_t * getIPAddress(const char * hostName, struct sockaddr_in * aSockaddr)
 	struct addrinfo *hostInfo = NULL;
 
 	
-	
+	printf("%c \n", *hostName);
 	memset(&hints,0,sizeof(hints));
 	hints.ai_flags = AI_V4MAPPED | AI_ALL;
 	hints.ai_family = AF_INET;
@@ -69,5 +70,5 @@ uint8_t * getIPAddress(const char * hostName, struct sockaddr_in * aSockaddr)
 		returnValue = ipAddress;
 		freeaddrinfo(hostInfo);
 	}
-  return returnValue;    // Either Null or IP address
+  return returnValue;    // Either Null or IP address*/
 }

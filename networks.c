@@ -36,7 +36,11 @@ int tcpServerSetup(int portNumber)
 		perror("socket call");
 		exit(1);
 	}
-
+	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int))<0)
+	{
+		perror("setsockopterror\n");
+		exit(1);
+	}
 	server.sin_family= AF_INET;         		
 	server.sin_addr.s_addr = INADDR_ANY;   //wild card machine address
 	server.sin_port= htons(portNumber);         
