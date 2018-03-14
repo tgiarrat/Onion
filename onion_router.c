@@ -134,6 +134,7 @@ struct onionHeader getOnionHeader(int tmp_itr, int totalSize) {
     header.next_hop[2] = 0;
     header.next_hop[3] = 0;
   }
+  return header;
 }
 
 int buildHops(char *buf, int numHops, int bodySize) {
