@@ -33,4 +33,4 @@ void addClientNode(struct clientNode **head, int in_socket, int out_socket);
 void newStart(int startSocket, struct clientNode **head, int numHops);
 int recieveStart(int socket, char *packet);
 
-void exitNode(char *packet);
+void exitNode(char *packet, struct clientNode *node);

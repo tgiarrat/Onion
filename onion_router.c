@@ -457,19 +457,43 @@ int clientActivity(struct clientNode *curNode)
     return 0;
 }
 
-char *getURL(char *head)
-{
-    char *pos = strrchr(head, ':');
-    pos = strchr(pos, '\n');
-    return strchr(pos + 1, '\n') + 1;
-}
-char *getPort(char *head)
-{
-    char *pos = strchr(head, ':');
-    pos = strchr(pos, '\n');
-    return strchr(pos + 1, '\n') + 1;
-}
+char port[6];
+char url[256];
+char *port80 = "80";
 
-void exitNode(char *packet)
+void setPortAndURL(char *head)
 {
+    head = strstr(head, "Host: ") + 6;
+    char *tail = strchr(head, '\r');
+    if (tail == NULL)
+        tail = strchr(head, '\n');
+    char *split = strchr(head, ':');
+    if (split < head || split > tail)
+    {
+        strcpy(port, port80);
+        memcpy(url, head, tail - head);
+        url[tail - head] = 0;
+    }
+    else
+    {
+        memcpy(port, split + 1, tail - (split + 1));
+        port[tail - (split + 1)] = 0;
+        memcpy(url, head, (split - 1) - head);
+        url[(split - 1) - head] = 0;
+    }
+}
+//set in sock before (packet should be pointed to an unencrpted HTTP header string)
+void exitNode(char *packet, struct clientNode *node)
+{
+    setPortAndURL(packet);
+    node->port_pair.out_socket = tcpClientSetup(url, port, 0);
+    if (memcmp(packet, "GET ", 4) == 0)
+    {
+        //forward GET
+        send(node->port_pair.out_socket, packet, strlen(packet), 0);
+    }
+    else
+    {
+        //no forward connect
+    }
 }
