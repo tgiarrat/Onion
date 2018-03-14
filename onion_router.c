@@ -64,7 +64,7 @@ void runRouter(int serverSocket, int portNumber, int startSocket) {
             serverSocket; // need this because we are going to loop throug hte set of
     // sockets used and we need to know where to stop looking
     int ret;
-    int numHops = 2; // change this obv
+    int numHops = 0; // change this obv
 
     for (itr = 0; itr < MAX_SOCKETS; itr++) {
         clientSockets[itr] = -1;
