@@ -32,7 +32,7 @@ char * getIPAddressString(uint8_t * ipAddress)
 	}
 	else
 	{
-		strcpy(ipString, "(IP not found)");
+		//strcpy(ipString, "(IP not found)");
 	}
 	
 	return ipString;

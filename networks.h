@@ -10,10 +10,6 @@
 #define BACKLOG 10
 #define MAX_PACKET_SIZE 65535
 
-struct chat_header{
-	uint16_t packetLen;
-	uint8_t byteFlag;
-}__attribute__((packed));
 
 
 // for the server side
