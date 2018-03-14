@@ -66,7 +66,6 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
     int maxSocket =
         serverSocket; // need this because we are going to loop throug hte set of
     // sockets used and we need to know where to stop looking
-    int ret;
     int numHops = 0; // change this obv
 
     for (itr = 0; itr < MAX_SOCKETS; itr++)
@@ -122,10 +121,17 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
                 if (curNode->nodeType < 0)
                 {
                     printf("start node activitiy\n");
-                    ret = startClientActivity(curNode, numHops);
+                    startClientActivity(curNode, numHops);
                 }
-                printf("client activity\n");
-                ret = clientActivity(curNode);
+                else if (curNode->nodeType == 0)
+                {
+                    printf("client activity\n");
+                    clientActivity(curNode);
+                }
+                else
+                {
+                    //exit
+                }
             }
             if (curNode != NULL)
             {
@@ -221,7 +227,7 @@ int buildHops(char *buf, int numHops, int bodySize)
     totalHeaderSize =
         (numHops + 1) * sizeof(struct onionHeader); // plus 1 for the end hop
 
-    for (itr = 0; itr < numHops; itr++)
+    for (itr = 0; itr < numHops + 1; itr++)
     {
         header = getOnionHeader(itr, totalHeaderSize + bodySize);
         memcpy(buf + (itr * sizeof(struct onionHeader)), &header,
@@ -256,7 +262,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
     addClientNode(head, clientInSocket, clientOutSocket);
     // make a struct where the out and in sockets are paired
-    sendPacket(clientOutSocket, buf, sendLength);
+    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
     // add client
 }
 
@@ -405,7 +411,9 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     int clientInSocket;
     int clientOutSocket;
     uint16_t bodySize;
+    uint16_t sendLength;
     char buf[MAX_PACKET_SIZE];
+    char nextHopIp[4];
 
     clientInSocket = startNode->port_pair.in_socket;
     clientOutSocket = startNode->port_pair.out_socket;
@@ -416,8 +424,12 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
         perror("error recieving a starting packet!\n");
         exit(-1);
     }
-    buildHops(buf, numHops, bodySize);
-
+    sendLength = buildHops(buf, numHops, bodySize);
+    sendLength -= sizeof(struct onionHeader);
+    memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
+    printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
+           nextHopIp[2], nextHopIp[3]);
+    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
     return 0;
 }
 
@@ -448,7 +460,7 @@ int clientActivity(struct clientNode *curNode)
     if (!isDest(header))
     { // probably going to want some sort of check to see if
         // this is the final dest. maybe a hardcoded ip
-        sendPacket(clientOutSocket, buf, sendLength);
+        sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
     }
     else
     {
