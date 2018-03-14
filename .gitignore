@@ -1,3 +1,5 @@
 server/keys
 .idea/
 cmake-build-debug/
+onion
+*.o
