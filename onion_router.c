@@ -11,13 +11,37 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <openssl/rsa.h>
 
 #include "networks.h"
 #include "onion_router.h"
+#include "rsa.h"
 
 int clientSockets[MAX_SOCKETS];
 
-int main(int argc, char *argv[]) {
+char *serverString = "127.0.0.1";
+
+int main(int argc, char **argv) {
+
+    if (argc > 1) {
+        serverString = argv[1];
+        printf("%s\n",serverString);
+    }
+
+    init();
+
+    FILE *pub = fopen("id_rsa.pub","w+");
+    FILE *priv = fopen("id_rsa","w+");
+
+    if (!keyExists(priv)) {
+        RSA *key = genkey();
+        writePublicKey(key,pub);
+        writePrivateKey(key,priv);
+        RSA_free(key);
+        postPublicKey(serverString, pub);
+    }
+
+
     int serverSocket = 0; // socket descriptor for the server socket
     int startSocket = 0;
     // int clientSocket
@@ -158,6 +182,10 @@ int buildHops(char *buf, int numHops, int bodySize) {
         array[i] = array[randomIndex];
         array[randomIndex] = temp;
     }
+
+    ip_list ips = getPublicKeys("127.0.0.1");
+
+    printf("first hop ip:%s",ips.ips[0]);
 
     uint16_t totalHeaderSize;
     int itr;

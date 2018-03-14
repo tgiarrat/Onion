@@ -21,11 +21,11 @@ void writePublicKey(RSA *keypair, FILE *fd);
 typedef struct key_list_t {
     char    ips[16][32];
     char    numIps;
-}key_list;
+}ip_list;
 
 int connectToServer(char *server);
 void postPublicKey(char *server, FILE *fd);
-key_list getPublicKeys(char *server);
+ip_list getPublicKeys(char *server);
 
 RSA *readPrivateKey(FILE *fd);
 RSA *readPublicKey(FILE *fd);

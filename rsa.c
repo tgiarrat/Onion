@@ -219,12 +219,12 @@ char *getBody(char * head) {
     return strchr(pos + 1,'\n') + 1;
 }
 
-key_list getPublicKeys(char *server) {
+ip_list getPublicKeys(char *server) {
     char buff[5096] = {0};
     char keyBuff[5096] = {0};
     char packet[512] = {0};
     char ip[16] = {0};
-    key_list list;
+    ip_list list;
     FILE *key;
     int serverSocket = connectToServer(server);
 
