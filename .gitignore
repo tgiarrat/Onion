@@ -3,3 +3,5 @@ server/keys
 cmake-build-debug/
 onion
 *.o
+id_rsa
+id_rsa.pub
