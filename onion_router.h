@@ -29,8 +29,8 @@ int clientActivity(struct clientNode *curNode);
 int startClientActivity(struct clientNode *startNode, uint16_t numHops);
 int recievePacket(int socket, char *packet);
 int sendPacket(int out_socket, char *packet, int sendLength);
-void addClientNode(struct clientNode **head, int in_socket, int out_socket);
+void addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType);
 void newStart(int startSocket, struct clientNode **head, int numHops);
 int recieveStart(int socket, char *packet);
-
+int isDest(struct onionHeader header);
 void exitNode(char *packet, struct clientNode *node);

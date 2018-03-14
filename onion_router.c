@@ -260,7 +260,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
            nextHopIp[2], nextHopIp[3]);
     clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
-    addClientNode(head, clientInSocket, clientOutSocket);
+    addClientNode(head, clientInSocket, clientOutSocket, -1);
     // make a struct where the out and in sockets are paired
     sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
     // add client
@@ -268,12 +268,14 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
 
 void newConnection(int serverSocket, struct clientNode **head)
 {
+    struct onionHeader header;
     int clientInSocket;
     int clientOutSocket;
     uint16_t sendLength;
     char *outPort = "40501";
     char buf[MAX_PACKET_SIZE];
     char nextHopIp[4];
+    int nodeType;
 
     if ((clientInSocket =
              accept(serverSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
@@ -289,16 +291,17 @@ void newConnection(int serverSocket, struct clientNode **head)
     sendLength = ntohs(sendLength);
     sendLength -= sizeof(struct onionHeader);
     memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
+    memcpy(&header, buf, sizeof(struct onionHeader));
     printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
            nextHopIp[2], nextHopIp[3]);
     clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
-
-    addClientNode(head, clientInSocket, clientOutSocket);
+    nodeType = isDest(header);
+    addClientNode(head, clientInSocket, clientOutSocket, nodeType);
     // make a struct where the out and in sockets are paired
     sendPacket(clientOutSocket, buf, sendLength);
 }
 
-void addClientNode(struct clientNode **head, int in_socket, int out_socket)
+void addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType)
 {
     struct clientNode *newConnectionNode =
         (struct clientNode *)calloc(1, sizeof(struct clientNode));
@@ -306,6 +309,7 @@ void addClientNode(struct clientNode **head, int in_socket, int out_socket)
 
     newConnectionNode->port_pair.in_socket = in_socket;
     newConnectionNode->port_pair.out_socket = out_socket;
+    newConnectionNode->nodeType = nodeType;
     newConnectionNode->next = NULL;
 
     if (*head == NULL)
