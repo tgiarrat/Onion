@@ -262,7 +262,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
     addClientNode(head, clientInSocket, clientOutSocket, -1);
     // make a struct where the out and in sockets are paired
-    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
+    sendPacket(clientOutSocket, buf, sendLength);
     // add client
 }
 
@@ -298,7 +298,10 @@ void newConnection(int serverSocket, struct clientNode **head)
     nodeType = isDest(header);
     addClientNode(head, clientInSocket, clientOutSocket, nodeType);
     // make a struct where the out and in sockets are paired
-    sendPacket(clientOutSocket, buf, sendLength);
+    if (nodeType == 0)
+    {
+        sendPacket(clientOutSocket, buf, sendLength);
+    }
 }
 
 void addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType)
@@ -433,7 +436,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
     printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
            nextHopIp[2], nextHopIp[3]);
-    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
+    sendPacket(clientOutSocket, buf, sendLength);
     return 0;
 }
 
@@ -464,7 +467,7 @@ int clientActivity(struct clientNode *curNode)
     if (!isDest(header))
     { // probably going to want some sort of check to see if
         // this is the final dest. maybe a hardcoded ip
-        sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
+        sendPacket(clientOutSocket, buf, sendLength);
     }
     else
     {
