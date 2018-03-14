@@ -240,7 +240,7 @@ ip_list getPublicKeys(char *server) {
     int count = 0;
     char *pos = getBody(buff);
     while (pos > buff && EOF != sscanf( pos,"%s\n",ip)) {
-        memcpy(&list.ips[(int)list.numIps][0],ip,16);
+        strcpy(&list.ips[(int)list.numIps][0],ip);
         list.numIps++;
         key = fopen(ip,"w+");
         if (!keyExists(key)) {

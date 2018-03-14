@@ -12,6 +12,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <openssl/rsa.h>
+#include <inttypes.h>
 
 #include "networks.h"
 #include "onion_router.h"
@@ -20,6 +21,9 @@
 int clientSockets[MAX_SOCKETS];
 
 char *serverString = "127.0.0.1";
+char *outPort = "40501";
+
+RSA *privateKey;
 
 int main(int argc, char **argv)
 {
@@ -28,6 +32,7 @@ int main(int argc, char **argv)
     {
         serverString = argv[1];
         printf("%s\n", serverString);
+
     }
 
     init();
@@ -43,6 +48,10 @@ int main(int argc, char **argv)
         RSA_free(key);
         postPublicKey(serverString, pub);
     }
+
+    privateKey = readPrivateKey(priv);
+    fclose(pub);
+    fclose(priv);
 
     int serverSocket = 0; // socket descriptor for the server socket
     int startSocket = 0;
@@ -66,7 +75,7 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
     int maxSocket =
         serverSocket; // need this because we are going to loop throug hte set of
     // sockets used and we need to know where to stop looking
-    int numHops = 0; // change this obv
+    int numHops = 2; // change this obv
 
     for (itr = 0; itr < MAX_SOCKETS; itr++)
     {
@@ -91,6 +100,11 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
             if (maxSocket < curNode->port_pair.in_socket)
             {
                 maxSocket = curNode->port_pair.in_socket;
+            }
+            FD_SET(curNode->port_pair.out_socket, &rfds);
+            if (maxSocket < curNode->port_pair.out_socket)
+            {
+                maxSocket = curNode->port_pair.out_socket;
             }
             curNode = curNode->next;
         }
@@ -133,10 +147,13 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
                     //exit
                 }
             }
-            if (curNode != NULL)
+            if (FD_ISSET(curNode->port_pair.out_socket, &rfds))
             {
-                curNode = curNode->next;
+                printf("return activitiy\n");
+                clientReturnActivity(curNode);
             }
+            curNode = curNode->next;
+
         }
     }
 }
@@ -198,9 +215,43 @@ struct onionHeader getOnionHeader(int tmp_itr, int totalSize)
     return header;
 }
 
-int buildHops(char *buf, int numHops, int bodySize)
+int buildHops(char *buf, int numHops, short bodySize, struct entryClientNode *node)
 {
-    int array[numHops];
+    char swapBuff[MAX_PACKET_SIZE];
+    char flag = 1;
+    int itr;
+    struct onionHeader *header = (struct onionHeader *)buf;
+    //encrypt hop 0 here
+
+    encrypt(node->keys[0],(char *)header,swapBuff,bodySize);
+    memcpy((char *)header,(char *)swapBuff,bodySize);
+
+    for (itr = 1; itr < numHops; itr++) {
+        header--;
+        bodySize += sizeof(struct onionHeader);
+        header->packetLength = bodySize;
+        if (itr != numHops - 1)
+            memcpy(header->next_hop, node->path[itr],4);
+        else {
+            header->next_hop[0] = 0;
+            header->next_hop[1] = 0;
+            header->next_hop[2] = 0;
+            header->next_hop[3] = 0;
+        }
+        //encrypt here
+        encrypt(node->keys[itr],(char *)header,swapBuff,bodySize);
+        memcpy((char *)header,(char *)swapBuff,bodySize);
+    }
+    return bodySize;
+}
+
+
+void pickHops(struct clientNode *pNode, int numHops) {
+    ip_list ips = getPublicKeys(serverString);
+    int i;
+
+    int *array = calloc(1,ips.numIps);
+    struct entryClientNode *node = (struct entryClientNode *) pNode;
 
     for (int i = 0; i < numHops; i++)
     { // fill array
@@ -216,96 +267,77 @@ int buildHops(char *buf, int numHops, int bodySize)
         array[randomIndex] = temp;
     }
 
-    ip_list ips = getPublicKeys(serverString);
-
-    printf("first hop ip:%s", ips.ips[0]);
-
-    uint16_t totalHeaderSize;
-    int itr;
-    struct onionHeader header;
-
-    totalHeaderSize =
-        (numHops + 1) * sizeof(struct onionHeader); // plus 1 for the end hop
-
-    for (itr = 0; itr < numHops + 1; itr++)
-    {
-        header = getOnionHeader(itr, totalHeaderSize + bodySize);
-        memcpy(buf + (itr * sizeof(struct onionHeader)), &header,
-               sizeof(struct onionHeader));
+    for (i=0;i<numHops;i++) {
+        sscanf(ips.ips[array[i]],"%u.%u.%u.%u",&node->path[i][0],
+               &node->path[i][1],&node->path[i][2],&node->path[i][3]);
+        node->keys[i] = readPublicKeyByIPname(ips.ips[array[i]]);
     }
-    return totalHeaderSize + bodySize;
 }
 
 void newStart(int startSocket, struct clientNode **head, int numHops)
 {
     uint16_t sendLength;
     int clientInSocket;
-    int clientOutSocket;
     char buf[MAX_PACKET_SIZE];
+    char packet[MAX_PACKET_SIZE];
     int packetSize;
     char nextHopIp[4];
-    char *outPort = "40501";
+
     if ((clientInSocket =
              accept(startSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
     {
         perror("accept call error");
         exit(-1);
     }
-    printf("recieveing start...");
-    packetSize = recieveStart(clientInSocket,
-                              buf + ((numHops + 1) * sizeof(struct onionHeader)));
-    sendLength = buildHops(buf, numHops, packetSize);
-    sendLength -= sizeof(struct onionHeader);
-    memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
-    printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
-           nextHopIp[2], nextHopIp[3]);
-    clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
-    addClientNode(head, clientInSocket, clientOutSocket, -1);
-    // make a struct where the out and in sockets are paired
-    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
-    // add client
+    struct clientNode *node = addClientNode(head, clientInSocket, 0, -1);
+    pickHops(node, numHops);
+    node->port_pair.out_socket = tcpClientSetup(nextHopIp, outPort, 0);
+
+    startClientActivity(node,numHops);
 }
 
 void newConnection(int serverSocket, struct clientNode **head)
 {
-    struct onionHeader header;
-    int clientInSocket;
-    int clientOutSocket;
-    uint16_t sendLength;
-    char *outPort = "40501";
     char buf[MAX_PACKET_SIZE];
-    char nextHopIp[4];
-    int nodeType;
+    char dec[MAX_PACKET_SIZE];
+    struct onionHeader *header;
 
-    if ((clientInSocket =
-             accept(serverSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
+    struct clientNode *curNode = addClientNode(head,0,0,0);
+    curNode->port_pair.in_socket = accept(serverSocket,(struct sockaddr *)0, (socklen_t *)0);
+
+    ssize_t len = 0;
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
-        perror("accept call error");
-        exit(-1);
+        perror("Error recieving packet\n");
+        //exit(-1);
+    } else {
+        //decrypt
+        decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
+        header = (struct onionHeader *) dec;
+        if (isDest(*header)) {
+            header++;
+            curNode->nodeType = 1;
+            exitNode((char *) header,curNode);
+        } else {
+            curNode->nodeType = 0;
+            sprintf(buf,"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"\0",header->next_hop[0],
+                    header->next_hop[1],header->next_hop[2],header->next_hop[3]);
+            curNode->port_pair.out_socket = tcpClientSetup(buf,outPort,0);
+            header++;
+        }
+        len -= sizeof(struct onionHeader);
+        send(curNode->port_pair.out_socket, (char *) header, (size_t) len, 0);
     }
-    // setClientSocket(clientInSocket);
-    recievePacket(clientInSocket, buf);
-
-    // now setup this as a client for another node
-    memcpy(&sendLength, buf, 2);
-    sendLength = ntohs(sendLength);
-    sendLength -= sizeof(struct onionHeader);
-    memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
-    memcpy(&header, buf, sizeof(struct onionHeader));
-    printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
-           nextHopIp[2], nextHopIp[3]);
-    clientOutSocket = tcpClientSetup(nextHopIp, outPort, 1);
-    nodeType = isDest(header);
-    addClientNode(head, clientInSocket, clientOutSocket, nodeType);
-    // make a struct where the out and in sockets are paired
-    sendPacket(clientOutSocket, buf, sendLength);
 }
 
-void addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType)
+struct clientNode * addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType)
 {
-    struct clientNode *newConnectionNode =
-        (struct clientNode *)calloc(1, sizeof(struct clientNode));
-    struct clientNode *curNode;
+    struct clientNode *newConnectionNode;
+    if (nodeType == 1)
+        newConnectionNode =(struct clientNode *)calloc(1, sizeof(struct entryClientNode));
+    else
+        newConnectionNode =(struct clientNode *)calloc(1, sizeof(struct clientNode));
+    //struct clientNode *curNode;
 
     newConnectionNode->port_pair.in_socket = in_socket;
     newConnectionNode->port_pair.out_socket = out_socket;
@@ -318,14 +350,10 @@ void addClientNode(struct clientNode **head, int in_socket, int out_socket, int 
     }
     else
     {
-        // iterate to the end of the list
-        curNode = *head;
-        while (curNode->next != NULL)
-        {
-            curNode = curNode->next;
-        }
-        curNode->next = newConnectionNode;
+        newConnectionNode->next = *head;
+        *head = newConnectionNode;
     }
+    return newConnectionNode;
 }
 
 int recieveStart(int socket, char *packet)
@@ -412,66 +440,62 @@ int isDest(struct onionHeader header)
 
 int startClientActivity(struct clientNode *startNode, uint16_t numHops)
 {
-    int clientInSocket;
-    int clientOutSocket;
-    uint16_t bodySize;
-    uint16_t sendLength;
     char buf[MAX_PACKET_SIZE];
-    char nextHopIp[4];
+    char packet[MAX_PACKET_SIZE];
+    ssize_t packetSize;
 
-    clientInSocket = startNode->port_pair.in_socket;
-    clientOutSocket = startNode->port_pair.out_socket;
 
-    bodySize = recieveStart(clientInSocket, buf);
-    if (bodySize < 0)
-    {
-        perror("error recieving a starting packet!\n");
-        exit(-1);
-    }
-    sendLength = buildHops(buf, numHops, bodySize);
-    sendLength -= sizeof(struct onionHeader);
-    memcpy(nextHopIp, buf + sizeof(uint16_t), 4);
-    printf("next hop ip is %d.%d.%d.%d\n", nextHopIp[0], nextHopIp[1],
-           nextHopIp[2], nextHopIp[3]);
-    sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
+    packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
+    //shift to back of buffer
+    memcpy(packet + MAX_PACKET_SIZE - packetSize,buf,packetSize);
+
+    packetSize = buildHops(packet + MAX_PACKET_SIZE - packetSize, numHops, packetSize, (struct entryClientNode *) startNode);
+
+    sendPacket(startNode->port_pair.out_socket, packet + MAX_PACKET_SIZE - packetSize, packetSize);
     return 0;
 }
 
 int clientActivity(struct clientNode *curNode)
 {
-    int clientInSocket;
-    int clientOutSocket;
-    uint16_t sendLength;
     char buf[MAX_PACKET_SIZE];
-    struct onionHeader header;
+    char dec[MAX_PACKET_SIZE];
+    struct onionHeader *header;
 
-    clientInSocket = curNode->port_pair.in_socket;
-    clientOutSocket = curNode->port_pair.out_socket;
-    //clientOutSocket = getOutSocket(clientInSocket, *head);
-    //if (clientOutSocket < 0) {
-    //    perror("Error getting matching out port\n");
-    //    exit(-1);
-    //}
-    if (recievePacket(clientInSocket, buf) == 1)
+    ssize_t len = 0;
+    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
-        exit(-1);
-    }
-
-    memcpy(&header, buf, sizeof(struct onionHeader));
-    sendLength = ntohs(header.packetLength);
-    sendLength -= sizeof(struct onionHeader);
-    if (!isDest(header))
-    { // probably going to want some sort of check to see if
-        // this is the final dest. maybe a hardcoded ip
-        sendPacket(clientOutSocket, buf + sizeof(struct onionHeader), sendLength);
-    }
-    else
-    {
-        printf("DEST LOGIC HERE\n\n\n\n");
+        //exit(-1);
+    } else {
+        //decrypt
+        //if (curNode->nodeType == 1) {
+        //    header = (struct onionHeader *) buf;
+        //} else {
+        decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
+        header = (struct onionHeader *) dec;
+        //}
+        len -= sizeof(struct onionHeader);
+        header++;
+        send(curNode->port_pair.in_socket, (char *) header, (size_t) len, 0);
     }
     return 0;
 }
+
+int clientReturnActivity(struct clientNode *curNode)
+{
+    char buf[MAX_PACKET_SIZE];
+
+    ssize_t len = 0;
+    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,0)) < 0)
+    {
+        perror("Error recieving packet\n");
+        //exit(-1);
+    } else {
+        send(curNode->port_pair.in_socket,buf,(size_t)len,0);
+    }
+    return 0;
+}
+
 
 char port[6];
 char url[256];

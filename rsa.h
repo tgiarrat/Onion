@@ -19,7 +19,7 @@ void writePrivateKey(RSA *keypair, FILE *fd);
 void writePublicKey(RSA *keypair, FILE *fd);
 
 typedef struct key_list_t {
-    char    ips[16][32];
+    char    ips[32][16];
     char    numIps;
 }ip_list;
 
