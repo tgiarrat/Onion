@@ -183,7 +183,7 @@ int buildHops(char *buf, int numHops, int bodySize) {
         array[randomIndex] = temp;
     }
 
-    ip_list ips = getPublicKeys("127.0.0.1");
+    ip_list ips = getPublicKeys(serverString);
 
     printf("first hop ip:%s",ips.ips[0]);
 
@@ -376,4 +376,20 @@ int clientActivity(int clientInSocket, struct clientNode **head) {
         printf("DEST LOGIC HERE\n\n\n\n");
     }
     return 0;
+}
+
+char *getURL(char * head) {
+    char *pos = strrchr(head,':');
+    pos = strchr(pos,'\n');
+    return strchr(pos + 1,'\n') + 1;
+}
+char *getPort(char * head) {
+    if
+    char *pos = strchr(head,':');
+    pos = strchr(pos,'\n');
+    return strchr(pos + 1,'\n') + 1;
+}
+
+void exitNode(char *packet) {
+
 }
