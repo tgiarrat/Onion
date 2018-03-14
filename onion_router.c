@@ -300,13 +300,16 @@ int getOutSocket(int clientInSocket, struct clientNode *head) {
 
 int isDest(struct onionHeader header) {
   int itr;
-
-  for (itr = 0; itr < 4; itr++) {
-    if (header.next_hop[itr] != 0x00) {
-      return 0;
-    }
+  if (
+    header.next_hop[0] == 127 &&
+    header.next_hop[1] == 0 &&
+    header.next_hop[2] == 0 &&
+    header.next_hop[3] == 1
+  ) {
+    return 1;
+  } else {
+    return 0;
   }
-  return 1;
 }
 
 int clientActivity(int clientInSocket, struct clientNode **head) {
@@ -330,6 +333,7 @@ int clientActivity(int clientInSocket, struct clientNode **head) {
   sendLength -= sizeof(struct onionHeader);
   if (!isDest(header)) { // probably going to want some sort of check to see if
                          // this is the final dest. maybe a hardcoded ip
+    printf("forwarding packet\n");
     sendPacket(clientOutSocket, buf, sendLength);
   } else {
     printf("DEST LOGIC HERE\n\n\n\n");
