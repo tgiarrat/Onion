@@ -1,0 +1,29 @@
+
+#define MAX_SOCKETS 256
+#define ONION_HDR_SIZE sizeof(struct onionHeader)
+#define MAX_BUF 65536
+
+struct port_pair {
+    int in_socket;
+    int out_socket;
+}__attribute__((packed));
+
+struct clientNode{
+    struct port_pair port_pair;
+    //int clientSockets[MAX_SOCKETS];
+    struct clientNode *next;
+};
+
+struct onionHeader {
+    uint16_t packetLength; //total packet length including this header
+    uint8_t next_hop[4];
+}__attribute__((packed));
+
+void runRouter(int serverSocket, int portNumber, int startSocket);
+void newConnection(int serverSocket,struct clientNode **head );
+int clientActivity(int clientSocket, struct clientNode **head);
+int recievePacket(int socket, char *packet);
+int sendPacket(int out_socket, char *packet, int sendLength);
+void addClientNode(struct clientNode **head, int in_socket, int out_socket);
+void newStart(int startSocket,struct clientNode **head, int numHops );
+int recieveStart(int socket, char *packet);

@@ -1,0 +1,29 @@
+
+/* 	Code originally give to Prof. Smith by his TA in 1994.
+	No idea who wrote it.  Copy and use at your own Risk
+*/
+
+
+#ifndef __NETWORKS_H__
+#define __NETWORKS_H__
+
+#define BACKLOG 10
+#define MAX_PACKET_SIZE 65535
+
+struct chat_header{
+	uint16_t packetLen;
+	uint8_t byteFlag;
+}__attribute__((packed));
+
+
+// for the server side
+int tcpServerSetup(int portNumber);
+int tcpAccept(int server_socket, int debugFlag);
+
+// for the client side
+int tcpClientSetup(char * serverName, char * port, int debugFlag);
+
+
+
+
+#endif
