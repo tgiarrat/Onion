@@ -285,6 +285,7 @@ void newConnection(int serverSocket, struct clientNode **head)
 
     struct clientNode *curNode = addClientNode(head,0,0,0);
     curNode->port_pair.in_socket = accept(serverSocket,(struct sockaddr *)0, (socklen_t *)0);
+    printf("test\n",header->next_hop[4]);
 
     ssize_t len = 0;
     if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
@@ -293,9 +294,9 @@ void newConnection(int serverSocket, struct clientNode **head)
         //exit(-1);
     } else {
         //decrypt
-        decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
+        len = decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
         header = (struct onionHeader *) dec;
-        printf("%d\n",header->next_hop[4]);
+        printf("here2:%d\n",header->next_hop[4]);
         if (isDest(*header)) {
             header++;
             curNode->nodeType = 1;
