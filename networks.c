@@ -4,17 +4,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/uio.h>
-#include <sys/time.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
 
 #include "networks.h"
 #include "gethostbyname6.h"
@@ -36,11 +32,7 @@ int tcpServerSetup(int portNumber)
 		perror("socket call");
 		exit(1);
 	}
-	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int))<0)
-	{
-		perror("setsockopterror\n");
-		exit(1);
-	}
+
 	server.sin_family= AF_INET;         		
 	server.sin_addr.s_addr = INADDR_ANY;   //wild card machine address
 	server.sin_port= htons(portNumber);         
@@ -125,10 +117,36 @@ int tcpClientSetup(char * serverName, char * port, int debugFlag)
 		perror("connect call");
 		exit(-1);
 	}
-	//if (debugFlag)
-	//{
+	if (debugFlag)
+	{
 		printf("Connected to %s IP: %s Port Number: %d\n", serverName, getIPAddressString(ipAddress), atoi(port));
-	//}
+	}
 	
 	return socket_num;
 }
+//char name[256];
+//char * getInterfaceIpAddress(int socket) {
+//    struct ifreq ifr;
+//    struct sockaddr sockaddrIn;
+//    socklen_t socklen = 4;
+//
+//    //fd = tcpClientSetup(server,"8000",0);
+////    fd = socket(AF_INET, SOCK_DGRAM, 0);
+//
+//    /* I want to get an IPv4 IP address */
+//    ifr.ifr_addr.sa_family = AF_INET;
+//
+//    /* I want IP address attached to "eth0" */
+////    strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
+//
+//    //ioctl(fd, SIOCGIFADDR, &ifr);
+//
+//
+//    int x = getsockname(socket, &sockaddrIn,&socklen);
+//    printf("%s%d\n",sockaddrIn.sa_data,x);
+//    //close(fd);
+//
+//    char *temp = inet_ntoa(( (struct sockaddr_in *)&ifr.ifr_addr )->sin_addr);
+////    printf("%s - %s\n" , interface , temp);
+//    return temp;
+//}
