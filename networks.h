@@ -18,6 +18,7 @@ int tcpAccept(int server_socket, int debugFlag);
 
 // for the client side
 int tcpClientSetup(char * serverName, char * port, int debugFlag);
+int tcpClientSetupChar(char * serverName, char * port, int debugFlag);
 
 
 

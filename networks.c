@@ -89,7 +89,9 @@ int tcpAccept(int server_socket, int debugFlag)
 int tcpClientSetup(char * serverName, char * port, int debugFlag) 
 {
 	// This is used by the client to connect to a server using TCP
-	
+	unsigned char *ips = (unsigned char *)serverName;
+    int x = ips[3]*256*256*256 + ips[2]*256*256 + ips[1]*256 + ips[0];
+
 	int socket_num;
 	uint8_t * ipAddress = NULL;
 	struct sockaddr_in server;      
@@ -103,14 +105,14 @@ int tcpClientSetup(char * serverName, char * port, int debugFlag)
 	// setup the server structure
 	server.sin_family = AF_INET;
 	server.sin_port = htons(atoi(port));
-	
+	server.sin_addr.s_addr = x;
 
 	// get the address of the server 
-	if ((ipAddress = getIPAddress(serverName, &server)) == NULL)
-	{
-		perror("get ip call");
-		exit(-1);
-	}
+//	if ((ipAddress = getIPAddress(serverName, &server)) == NULL)
+//	{
+//		perror("get ip call");
+//		exit(-1);
+//	}
 
 	if(connect(socket_num, (struct sockaddr*)&server, sizeof(server)) < 0)
 	{
@@ -124,6 +126,45 @@ int tcpClientSetup(char * serverName, char * port, int debugFlag)
 	
 	return socket_num;
 }
+int tcpClientSetupChar(char * serverName, char * port, int debugFlag)
+{
+    // This is used by the client to connect to a server using TCP
+
+    int socket_num;
+    uint8_t * ipAddress = NULL;
+    struct sockaddr_in server;
+
+    // create the socket
+    if ((socket_num = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("socket call");
+        exit(-1);
+    }
+    // setup the server structure
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(port));
+    //server.sin_addr.s_addr = (int) *serverName;
+
+    // get the address of the server
+	if ((ipAddress = getIPAddress(serverName, &server)) == NULL)
+	{
+		perror("get ip call");
+		exit(-1);
+	}
+
+    if(connect(socket_num, (struct sockaddr*)&server, sizeof(server)) < 0)
+    {
+        perror("connect call");
+        exit(-1);
+    }
+    if (debugFlag)
+    {
+        printf("Connected to %s IP: %s Port Number: %d\n", serverName, getIPAddressString(ipAddress), atoi(port));
+    }
+
+    return socket_num;
+}
+
 //char name[256];
 //char * getInterfaceIpAddress(int socket) {
 //    struct ifreq ifr;

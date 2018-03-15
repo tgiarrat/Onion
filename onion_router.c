@@ -20,7 +20,8 @@
 
 int clientSockets[MAX_SOCKETS];
 
-char *serverString = "127.0.0.1";
+char keyServerIP[4] = {127,0,0,1};
+
 char *outPort = "40501";
 
 RSA *privateKey;
@@ -30,8 +31,10 @@ int main(int argc, char **argv)
 
     if (argc > 1)
     {
-        serverString = argv[1];
-        printf("%s\n", serverString);
+        printf("%s\n", argv[1]);
+
+        sscanf(argv[1],"%u.%u.%u.%u",&keyServerIP[0],&keyServerIP[1],&keyServerIP[2],&keyServerIP[3]);
+        //keyServerIP[0] = atoi(argv[1]);
 
     }
 
@@ -46,9 +49,8 @@ int main(int argc, char **argv)
         writePublicKey(key, pub);
         writePrivateKey(key, priv);
         RSA_free(key);
-        postPublicKey(serverString, pub);
     }
-
+    postPublicKey(keyServerIP, pub);
     privateKey = readPrivateKey(priv);
     fclose(pub);
     fclose(priv);
@@ -247,7 +249,7 @@ int buildHops(char *buf, int numHops, short bodySize, struct entryClientNode *no
 
 
 void pickHops(struct clientNode *pNode, int numHops) {
-    ip_list ips = getPublicKeys(serverString);
+    ip_list ips = getPublicKeys(keyServerIP);
     int i;
 
     int *array = calloc(1,ips.numIps);
@@ -292,9 +294,8 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
 
     struct entryClientNode *node = (struct entryClientNode *)addClientNode(head, clientInSocket, 0, -1);
     pickHops(node, numHops);
-    sprintf(nextHopIp,"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"\0",node->path[0][0],node->path[0][1],
-            node->path[0][2],node->path[0][3]);
-    node->port_pair.out_socket = tcpClientSetup(nextHopIp, outPort, 0);
+
+    node->port_pair.out_socket = tcpClientSetup(node->path[0], outPort, 0);
 
     packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
     //shift to back of buffer
@@ -329,9 +330,7 @@ void newConnection(int serverSocket, struct clientNode **head)
             exitNode((char *) header,curNode);
         } else {
             curNode->nodeType = 0;
-            sprintf(buf,"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"\0",header->next_hop[0],
-                    header->next_hop[1],header->next_hop[2],header->next_hop[3]);
-            curNode->port_pair.out_socket = tcpClientSetup(buf,outPort,0);
+            curNode->port_pair.out_socket = tcpClientSetup(header->next_hop,outPort,0);
             header++;
         }
         len -= sizeof(struct onionHeader);
@@ -536,7 +535,7 @@ void setPortAndURL(char *head)
 void exitNode(char *packet, struct clientNode *node)
 {
     setPortAndURL(packet);
-    node->port_pair.out_socket = tcpClientSetup(url, port, 0);
+    node->port_pair.out_socket = tcpClientSetupChar(url, port, 0);
     if (memcmp(packet, "GET ", 4) == 0)
     {
         //forward GET
