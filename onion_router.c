@@ -295,6 +295,7 @@ void newConnection(int serverSocket, struct clientNode **head)
         //decrypt
         decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
         header = (struct onionHeader *) dec;
+        printf("%d\n",header->next_hop[4]);
         if (isDest(*header)) {
             header++;
             curNode->nodeType = 1;
