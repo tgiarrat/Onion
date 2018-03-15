@@ -162,33 +162,6 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
     }
 }
 
-void removeClientSocket(int clientSocket)
-{
-    int itr = 0;
-
-    for (; itr < MAX_SOCKETS; itr++)
-    {
-        if (clientSockets[itr] == clientSocket)
-        {
-            clientSockets[itr] = -1;
-            itr = MAX_SOCKETS + 1;
-        }
-    }
-}
-
-void setClientSocket(int clientSocket)
-{
-    int itr = 0;
-
-    for (; itr < MAX_SOCKETS; itr++)
-    {
-        if (clientSockets[itr] < 0)
-        {
-            clientSockets[itr] = clientSocket;
-            itr = MAX_SOCKETS + 1;
-        }
-    }
-}
 
 struct onionHeader getOnionHeader(int tmp_itr, int totalSize)
 {
@@ -225,26 +198,22 @@ int buildHops(char *buf, int numHops, short bodySize, struct entryClientNode *no
     char flag = 1;
     int itr;
     struct onionHeader *header = (struct onionHeader *)buf;
-    //encrypt hop 0 here
+    //encrypt hop 0
+    header->next_hop[0] = 0;
+    header->next_hop[1] = 0;
+    header->next_hop[2] = 0;
+    header->next_hop[3] = 0;
 
-    encrypt(node->keys[0],(char *)header,swapBuff,bodySize);
-    memcpy((char *)header,(char *)swapBuff,bodySize);
+    //bodySize = encrypt(node->keys[0],(char *)header,swapBuff,bodySize);
+    //memcpy((char *)header,(char *)swapBuff,bodySize);
 
-    for (itr = 1; itr < numHops; itr++) {
-        header--;
-        bodySize += sizeof(struct onionHeader);
-        header->packetLength = bodySize;
-        if (itr != numHops - 1)
-            memcpy(header->next_hop, node->path[itr],4);
-        else {
-            header->next_hop[0] = 0;
-            header->next_hop[1] = 0;
-            header->next_hop[2] = 0;
-            header->next_hop[3] = 0;
-        }
+    for (itr = numHops - 1; itr >= 0; itr--) {
+
         //encrypt here
-        encrypt(node->keys[itr],(char *)header,swapBuff,bodySize);
-        memcpy((char *)header,(char *)swapBuff,bodySize);
+        bodySize = encrypt(node->keys[itr],(char *)header,swapBuff,bodySize + ONION_HDR_SIZE);
+        memcpy(buf+ ONION_HDR_SIZE,(char *)swapBuff,bodySize);
+        memcpy(header->next_hop, node->path[itr],4);
+        header->packetLength = bodySize;
     }
     return bodySize;
 }
@@ -284,7 +253,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     int clientInSocket;
     char buf[MAX_PACKET_SIZE];
     char packet[MAX_PACKET_SIZE];
-    int packetSize;
+    short packetSize;
     char nextHopIp[16];
 
     if ((clientInSocket =
@@ -299,13 +268,13 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
 
     node->port_pair.out_socket = tcpClientSetup(node->path[0], outPort, 0);
 
-    packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
+    packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,MSG_WAITALL);
     //shift to back of buffer
-    memcpy(packet + MAX_PACKET_SIZE - packetSize,buf,packetSize);
+    memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
-    packetSize = buildHops(packet + MAX_PACKET_SIZE - packetSize, numHops, packetSize, node);
+    packetSize = buildHops(packet, numHops, packetSize, node);
 
-    sendPacket(node->port_pair.out_socket, packet + MAX_PACKET_SIZE - packetSize, packetSize);
+    sendPacket(node->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize);
 }
 
 void newConnection(int serverSocket, struct clientNode **head)
@@ -457,11 +426,11 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
 
     packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
     //shift to back of buffer
-    memcpy(packet + MAX_PACKET_SIZE - packetSize,buf,packetSize);
+    memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
-    packetSize = buildHops(packet + MAX_PACKET_SIZE - packetSize, numHops, packetSize, (struct entryClientNode *) startNode);
+    packetSize = buildHops(packet, numHops, packetSize, (struct entryClientNode *) startNode);
 
-    sendPacket(startNode->port_pair.out_socket, packet + MAX_PACKET_SIZE - packetSize, packetSize);
+    sendPacket(startNode->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize);
 
     return 0;
 }
@@ -482,7 +451,7 @@ int clientActivity(struct clientNode *curNode)
         //if (curNode->nodeType == 1) {
         //    header = (struct onionHeader *) buf;
         //} else {
-        decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
+        len = decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
         header = (struct onionHeader *) dec;
         //}
         len -= sizeof(struct onionHeader);
