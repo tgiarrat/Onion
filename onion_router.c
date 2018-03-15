@@ -281,7 +281,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     char buf[MAX_PACKET_SIZE];
     char packet[MAX_PACKET_SIZE];
     int packetSize;
-    char nextHopIp[4];
+    char nextHopIp[16];
 
     if ((clientInSocket =
              accept(startSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
@@ -290,11 +290,19 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
         exit(-1);
     }
 
-    struct clientNode *node = addClientNode(head, clientInSocket, 0, -1);
+    struct entryClientNode *node = (struct entryClientNode *)addClientNode(head, clientInSocket, 0, -1);
     pickHops(node, numHops);
+    sprintf(nextHopIp,"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"\0",node->path[0][0],node->path[0][1],
+            node->path[0][2],node->path[0][3]);
     node->port_pair.out_socket = tcpClientSetup(nextHopIp, outPort, 0);
 
-    startClientActivity(node,numHops);
+    packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
+    //shift to back of buffer
+    memcpy(packet + MAX_PACKET_SIZE - packetSize,buf,packetSize);
+
+    packetSize = buildHops(packet + MAX_PACKET_SIZE - packetSize, numHops, packetSize, node);
+
+    sendPacket(node->port_pair.out_socket, packet + MAX_PACKET_SIZE - packetSize, packetSize);
 }
 
 void newConnection(int serverSocket, struct clientNode **head)
