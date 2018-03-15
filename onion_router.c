@@ -287,7 +287,7 @@ void newConnection(int serverSocket, struct clientNode **head)
     curNode->port_pair.in_socket = accept(serverSocket,(struct sockaddr *)0, (socklen_t *)0);
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
@@ -424,7 +424,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     ssize_t packetSize;
 
 
-    packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
+    packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,MSG_WAITALL);
     //shift to back of buffer
     memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
@@ -466,7 +466,7 @@ int clientReturnActivity(struct clientNode *curNode)
     char buf[MAX_PACKET_SIZE];
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,0)) < 0)
+    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
