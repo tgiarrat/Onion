@@ -40,8 +40,10 @@ int main(int argc, char **argv)
 
     init();
 
-    FILE *pub = fopen("id_rsa.pub", "w+");
-    FILE *priv = fopen("id_rsa", "w+");
+    FILE *pub = fopen("id_rsa.pub", "a+");
+    FILE *priv = fopen("id_rsa", "a+");
+    fseek(pub,0,SEEK_SET);
+    fseek(priv,0,SEEK_SET);
 
     if (!keyExists(priv))
     {

@@ -242,7 +242,8 @@ ip_list getPublicKeys(char *server) {
     while (pos > buff && EOF != sscanf( pos,"%s\n",ip)) {
         strcpy(&list.ips[(int)list.numIps][0],ip);
         list.numIps++;
-        key = fopen(ip,"w+");
+        key = fopen(ip,"a+");
+        fseek(key,0,SEEK_SET);
         if (!keyExists(key)) {
             sprintf(packet,getKeyPacket,ip);
             serverSocket = connectToServer(server);
@@ -258,8 +259,10 @@ ip_list getPublicKeys(char *server) {
             count++;
             pos=strchr(pos,'\n')+1;
             char *keyPos = getBody(keyBuff);
-            fwrite(keyPos, sizeof(char),strlen(keyPos),key);
+            int x = fwrite(keyPos, sizeof(char),strlen(keyPos),key);
+            perror("error:");
         }
+
         fclose(key);
     }
     return list;
@@ -274,7 +277,7 @@ int keyExists(FILE *fd) {
 
 
 RSA *readPublicKeyByIPname(char * ip) {
-    FILE *temp = fopen(ip,"w+");
+    FILE *temp = fopen(ip,"r");
     RSA *key = readPublicKey(temp);
     fclose(temp);
     return key;
