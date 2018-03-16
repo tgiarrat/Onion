@@ -285,7 +285,7 @@ void newConnection(int serverSocket, struct clientNode **head)
 
     struct clientNode *curNode = addClientNode(head,0,0,0);
     curNode->port_pair.in_socket = accept(serverSocket,(struct sockaddr *)0, (socklen_t *)0);
-    printf("test\n",header->next_hop[4]);
+    printf("test\n",header->next_hop[3]);
 
     ssize_t len = 0;
     if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
