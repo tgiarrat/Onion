@@ -21,7 +21,7 @@ all:  $(FILE) onion$(FILE)
 	rm -f *.o
 	
 onion$(FILE): onion_router.c networks.o gethostbyname6.o
-	$(CC) $(CFLAGS) -o onion$(FILE) onion_router.c rsa.c networks.o gethostbyname6.o $(LIBS)
+	$(CC) $(CFLAGS) -o onion$(FILE) onion_router.c rsa.c networks.o gethostbyname6.o smartalloc.c $(LIBS)
 
 
 .c.o:
