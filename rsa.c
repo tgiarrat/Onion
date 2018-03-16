@@ -246,6 +246,7 @@ ip_list getPublicKeys(char *server) {
         fseek(key,0,SEEK_SET);
         if (!keyExists(key)) {
             sprintf(packet,getKeyPacket,ip);
+            printf("%s\n",packet);
             serverSocket = connectToServer(server);
             if (-1 == send(serverSocket,packet,strlen(packet),0)) {
                 perror("ERROR:\n");
@@ -257,12 +258,12 @@ ip_list getPublicKeys(char *server) {
             close(serverSocket);
             //strchr(keyBuff)
             count++;
-            pos=strchr(pos,'\n')+1;
+
             char *keyPos = getBody(keyBuff);
             int x = fwrite(keyPos, sizeof(char),strlen(keyPos),key);
             perror("error:");
         }
-
+        pos=strchr(pos,'\n')+1;
         fclose(key);
     }
     return list;

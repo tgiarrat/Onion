@@ -17,6 +17,7 @@
 #include "networks.h"
 #include "onion_router.h"
 #include "rsa.h"
+#include "smartalloc.h"
 
 int clientSockets[MAX_SOCKETS];
 
@@ -268,7 +269,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
 
     node->port_pair.out_socket = tcpClientSetup(node->path[0], outPort, 0);
 
-    packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,MSG_WAITALL);
+    packetSize = recv(node->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
     //shift to back of buffer
     memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
@@ -288,10 +289,12 @@ void newConnection(int serverSocket, struct clientNode **head)
     //printf("test,%d\n",header->next_hop[3]);
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
+    } else if (len == 0) {
+        return;
     } else {
         //decrypt
         len = decrypt(privateKey, (char *)buf, (char *)dec, (int)len);

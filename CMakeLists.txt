@@ -12,6 +12,8 @@ set(SOURCE_FILES
         networks.h
         onion_router.c
         onion_router.h
+        smartalloc.c
+        smartalloc.h
         rsa.c
         rsa.h)
 
