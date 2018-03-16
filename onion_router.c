@@ -274,7 +274,7 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
 
     packetSize = buildHops(packet, numHops, packetSize, node);
 
-    sendPacket(node->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize);
+    send(node->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize,0);
 }
 
 void newConnection(int serverSocket, struct clientNode **head)
@@ -371,23 +371,7 @@ int recievePacket(int socket, char *packet)
     return 0;
 }
 
-int sendPacket(int out_socket, char *packet, int sendLength)
-{
-    int sent;
-    // send packet:
-    sent = send(out_socket, packet + sizeof(struct onionHeader), sendLength, 0);
-    if (sent < 0)
-    {
-        perror("send call");
-        exit(-1);
-    }
-    if (sent == 0)
-    {
-        perror("sent zero");
-        exit(-1);
-    }
-    return 0;
-}
+
 
 int getOutSocket(int clientInSocket, struct clientNode *head)
 {
@@ -432,7 +416,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
 
     packetSize = buildHops(packet, numHops, packetSize, (struct entryClientNode *) startNode);
 
-    sendPacket(startNode->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize);
+    send(startNode->port_pair.out_socket, packet + ONION_HDR_SIZE, packetSize,0);
 
     return 0;
 }
