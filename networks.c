@@ -27,6 +27,10 @@ int tcpServerSetup(int portNumber)
 
 	/* create the tcp socket  */
 	server_socket= socket(AF_INET, SOCK_STREAM, 0);
+
+    int option = 1;
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
 	if(server_socket < 0)
 	{
 		perror("socket call");

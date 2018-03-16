@@ -288,7 +288,7 @@ void newConnection(int serverSocket, struct clientNode **head)
     //printf("test,%d\n",header->next_hop[3]);
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
@@ -296,7 +296,7 @@ void newConnection(int serverSocket, struct clientNode **head)
         //decrypt
         len = decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
         header = (struct onionHeader *) dec;
-        printf("here2:%d\n",header->next_hop[4]);
+        printf("here2:%d\n",header->next_hop[3]);
         if (isDest(*header)) {
             header++;
             curNode->nodeType = 1;
@@ -410,7 +410,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     ssize_t packetSize;
 
 
-    packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,MSG_WAITALL);
+    packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
     //shift to back of buffer
     memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
@@ -452,7 +452,7 @@ int clientReturnActivity(struct clientNode *curNode)
     char buf[MAX_PACKET_SIZE];
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
+    if ((len = recv(curNode->port_pair.out_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);

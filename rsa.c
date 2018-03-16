@@ -27,7 +27,7 @@ void stop(RSA *keypair) {
 int encrypt(RSA *keypair, char *data, char *encrypted_data, int length) {
     int size = 0;
     int pos = 0;
-    int max = RSA_size(keypair)/2;
+    int max = RSA_size(keypair) - 42;
     char err[256];
     int temp;
     int e_len;
@@ -50,7 +50,7 @@ int encrypt(RSA *keypair, char *data, char *encrypted_data, int length) {
 int decrypt(RSA *keypair, char *encrypted_data, char *decrypted_data, int length) {
     int size = 0;
     int pos = 0;
-    int max = 256;
+    int max = RSA_size(keypair);
     char err[256];
     int temp;
     int d_len;
