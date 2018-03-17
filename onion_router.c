@@ -45,9 +45,9 @@ int main(int argc, char **argv)
     FILE *priv = fopen("id_rsa", "a+");
     fseek(pub,0,SEEK_SET);
     fseek(priv,0,SEEK_SET);
-
     if (!keyExists(priv))
     {
+        printf("Generating new keys!\n");
         RSA *key = genkey();
         writePublicKey(key, pub);
         writePrivateKey(key, priv);
@@ -91,9 +91,9 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
     {
         maxSocket = startSocket;
     }
+    printf("router starting...\n");
     while (1)
     {
-        printf("here\n");
         FD_ZERO(&rfds);
         FD_SET(serverSocket, &rfds); // watch socket for update
         FD_SET(startSocket, &rfds);
@@ -254,14 +254,14 @@ void newStart(int startSocket, struct clientNode **head, int numHops)
     int clientInSocket;
     char buf[MAX_PACKET_SIZE];
     char packet[MAX_PACKET_SIZE];
-    short packetSize;
+    long packetSize;
     char nextHopIp[16];
 
     if ((clientInSocket =
              accept(startSocket, (struct sockaddr *)0, (socklen_t *)0)) < 0)
     {
         perror("accept call error");
-        exit(-1);
+        exit(-2);
     }
 
     struct entryClientNode *node = (struct entryClientNode *)addClientNode(head, clientInSocket, 0, -1);
@@ -285,11 +285,11 @@ void newConnection(int serverSocket, struct clientNode **head)
     struct onionHeader *header;
 
     struct clientNode *curNode = addClientNode(head,0,0,0);
-    curNode->port_pair.in_socket = accept(serverSocket,(struct sockaddr *)0, (socklen_t *)0);
+    curNode->port_pair.in_socket = tcpAccept(serverSocket,0);
     //printf("test,%d\n",header->next_hop[3]);
 
     ssize_t len = 0;
-    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,MSG_WAITALL)) < 0)
+    if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
         //exit(-1);
@@ -494,6 +494,7 @@ void setPortAndURL(char *head)
 //set in sock before (packet should be pointed to an unencrpted HTTP header string)
 void exitNode(char *packet, struct clientNode *node)
 {
+    printf("%40s\n",packet);
     setPortAndURL(packet);
     node->port_pair.out_socket = tcpClientSetupChar(url, port, 0);
     if (memcmp(packet, "GET ", 4) == 0)
