@@ -535,6 +535,8 @@ void closeClient(struct clientNode *curNode) {
     close(curNode->port_pair.in_socket);
     if (curNode->prev)
         curNode->prev->next = curNode->next;
+    else
+        headClientNode = curNode->next;
     if (curNode->next)
         curNode->next->prev = curNode->prev;
     free(curNode);
