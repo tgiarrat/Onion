@@ -326,14 +326,17 @@ struct clientNode * addClientNode(struct clientNode **head, int in_socket, int o
     newConnectionNode->port_pair.in_socket = in_socket;
     newConnectionNode->port_pair.out_socket = out_socket;
     newConnectionNode->nodeType = nodeType;
-    newConnectionNode->next = NULL;
+    newConnectionNode->prev = NULL;
 
     if (*head == NULL)
     {
         *head = newConnectionNode;
+        newConnectionNode->next = NULL;
+
     }
     else
     {
+        (*head)->prev = newConnectionNode;
         newConnectionNode->next = *head;
         *head = newConnectionNode;
     }
@@ -414,6 +417,15 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
 
 
     packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
+
+    if (packetSize <= 0) {
+        close(startNode->port_pair.out_socket);
+        close(startNode->port_pair.in_socket);
+        startNode->prev->next = startNode->next;
+        startNode->next->prev = startNode->prev;
+        free(startNode);
+        return 0;
+    }
     //shift to back of buffer
     memcpy(packet + ONION_HDR_SIZE,buf,packetSize);
 
@@ -434,7 +446,20 @@ int clientActivity(struct clientNode *curNode)
     if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
+        close(curNode->port_pair.out_socket);
+        close(curNode->port_pair.in_socket);
+        curNode->prev->next = curNode->next;
+        curNode->next->prev = curNode->prev;
+        free(curNode);
+        return 0;
         //exit(-1);
+    } else if (len == 0) {
+        close(curNode->port_pair.out_socket);
+        close(curNode->port_pair.in_socket);
+        curNode->prev->next = curNode->next;
+        curNode->next->prev = curNode->prev;
+        free(curNode);
+        return 0;
     } else {
         //decrypt
         //if (curNode->nodeType == 1) {
@@ -459,6 +484,14 @@ int clientReturnActivity(struct clientNode *curNode)
     {
         perror("Error recieving packet\n");
         //exit(-1);
+    } else if (len == 0) {
+        //connection closed, pass it on
+        close(curNode->port_pair.out_socket);
+        close(curNode->port_pair.in_socket);
+        curNode->prev->next = curNode->next;
+        curNode->next->prev = curNode->prev;
+        free(curNode);
+        return 0;
     } else {
         send(curNode->port_pair.in_socket,buf,(size_t)len,0);
     }
@@ -494,7 +527,7 @@ void setPortAndURL(char *head)
 //set in sock before (packet should be pointed to an unencrpted HTTP header string)
 void exitNode(char *packet, struct clientNode *node)
 {
-    printf("%40s\n",packet);
+//    printf("%40s\n",packet);
     setPortAndURL(packet);
     node->port_pair.out_socket = tcpClientSetupChar(url, port, 0);
     if (memcmp(packet, "GET ", 4) == 0)

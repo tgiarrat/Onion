@@ -15,6 +15,7 @@ struct entryClientNode
     struct port_pair port_pair;
     //int clientSockets[MAX_SOCKETS];
     struct clientNode *next;
+    struct clientNode *prev;
     u_int8_t    path[16][4];
     RSA         *keys[16];
 } __attribute__((packed));
@@ -25,6 +26,7 @@ struct clientNode
     struct port_pair port_pair;
     //int clientSockets[MAX_SOCKETS];
     struct clientNode *next;
+    struct clientNode *prev;
 } __attribute__((packed));
 
 struct onionHeader
