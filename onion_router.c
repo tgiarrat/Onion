@@ -419,11 +419,7 @@ int startClientActivity(struct clientNode *startNode, uint16_t numHops)
     packetSize = recv(startNode->port_pair.in_socket,buf,MAX_PACKET_SIZE,0);
 
     if (packetSize <= 0) {
-        close(startNode->port_pair.out_socket);
-        close(startNode->port_pair.in_socket);
-        startNode->prev->next = startNode->next;
-        startNode->next->prev = startNode->prev;
-        free(startNode);
+        closeClient(startNode);
         return 0;
     }
     //shift to back of buffer
@@ -446,19 +442,11 @@ int clientActivity(struct clientNode *curNode)
     if ((len = recv(curNode->port_pair.in_socket, buf, MAX_PACKET_SIZE,0)) < 0)
     {
         perror("Error recieving packet\n");
-        close(curNode->port_pair.out_socket);
-        close(curNode->port_pair.in_socket);
-        curNode->prev->next = curNode->next;
-        curNode->next->prev = curNode->prev;
-        free(curNode);
+        closeClient(curNode);
         return 0;
         //exit(-1);
     } else if (len == 0) {
-        close(curNode->port_pair.out_socket);
-        close(curNode->port_pair.in_socket);
-        curNode->prev->next = curNode->next;
-        curNode->next->prev = curNode->prev;
-        free(curNode);
+        closeClient(curNode);
         return 0;
     } else {
         //decrypt
@@ -486,11 +474,7 @@ int clientReturnActivity(struct clientNode *curNode)
         //exit(-1);
     } else if (len == 0) {
         //connection closed, pass it on
-        close(curNode->port_pair.out_socket);
-        close(curNode->port_pair.in_socket);
-        curNode->prev->next = curNode->next;
-        curNode->next->prev = curNode->prev;
-        free(curNode);
+        closeClient(curNode);
         return 0;
     } else {
         send(curNode->port_pair.in_socket,buf,(size_t)len,0);
@@ -540,4 +524,14 @@ void exitNode(char *packet, struct clientNode *node)
         send(node->port_pair.out_socket, packet, strlen(packet), 0);
         //no forward connect
     }
+}
+
+void closeClient(struct clientNode *curNode) {
+    close(curNode->port_pair.out_socket);
+    close(curNode->port_pair.in_socket);
+    if (curNode->prev)
+        curNode->prev->next = curNode->next;
+    if (curNode->next)
+        curNode->next->prev = curNode->prev;
+    free(curNode);
 }

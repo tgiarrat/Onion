@@ -35,6 +35,8 @@ struct onionHeader
     uint8_t next_hop[4];
 } __attribute__((packed));
 
+void closeClient(struct clientNode *curNode);
+
 void runRouter(int serverSocket, int portNumber, int startSocket);
 void newConnection(int serverSocket, struct clientNode **head);
 int clientActivity(struct clientNode *curNode);
