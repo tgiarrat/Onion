@@ -539,5 +539,8 @@ void closeClient(struct clientNode *curNode) {
         headClientNode = curNode->next;
     if (curNode->next)
         curNode->next->prev = curNode->prev;
-    free(curNode);
+    if (curNode->nodeType == -1)
+        free((struct entryClientNode *) curNode);
+    else
+        free(curNode);
 }
