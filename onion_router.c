@@ -71,12 +71,15 @@ int main(int argc, char **argv)
     return 0;
 }
 
+struct clientNode *headClientNode;
+
 void runRouter(int serverSocket, int portNumber, int startSocket)
 {
     fd_set rfds;
     int itr;
     struct clientNode *curNode = NULL;
-    struct clientNode *headClientNode = curNode;
+    struct clientNode *next = NULL;
+    headClientNode = curNode;
     int maxSocket =
         serverSocket; // need this because we are going to loop throug hte set of
     // sockets used and we need to know where to stop looking
@@ -134,6 +137,7 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
         curNode = headClientNode;
         while (curNode != NULL)
         {
+            next = curNode->next;
             // check if curNode's socket is set
             if (FD_ISSET(curNode->port_pair.in_socket, &rfds))
             {
@@ -157,7 +161,7 @@ void runRouter(int serverSocket, int portNumber, int startSocket)
                 printf("return activitiy\n");
                 clientReturnActivity(curNode);
             }
-            curNode = curNode->next;
+            curNode = next;
 
         }
     }
