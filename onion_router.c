@@ -520,6 +520,10 @@ void exitNode(char *packet, struct clientNode *node)
 //    printf("%40s\n",packet);
     setPortAndURL(packet);
     node->port_pair.out_socket = tcpClientSetupChar(url, port, 0);
+    if (node->port_pair.out_socket == -1) {
+        closeClient(node);
+        return;
+    }
     if (memcmp(packet, "GET ", 4) == 0)
     {
         //forward GET

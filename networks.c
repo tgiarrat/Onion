@@ -153,7 +153,7 @@ int tcpClientSetupChar(char * serverName, char * port, int debugFlag)
 	if ((ipAddress = getIPAddress(serverName, &server)) == NULL)
 	{
 		perror("get ip call");
-		exit(-1);
+		return (-1);
 	}
 
     if(connect(socket_num, (struct sockaddr*)&server, sizeof(server)) < 0)
