@@ -231,12 +231,12 @@ void pickHops(struct clientNode *pNode, int numHops) {
     int *array = calloc(1,ips.numIps);
     struct entryClientNode *node = (struct entryClientNode *) pNode;
 
-    for (int i = 0; i < numHops; i++)
+    for (i = 0; i < numHops; i++)
     { // fill array
         array[i] = i;
     }
 
-    for (int i = 0; i < numHops; i++)
+    for (i = 0; i < numHops; i++)
     { // shuffle array
         int temp = array[i];
         int randomIndex = rand() % numHops;
@@ -250,6 +250,8 @@ void pickHops(struct clientNode *pNode, int numHops) {
                &node->path[i][1],&node->path[i][2],&node->path[i][3]);
         node->keys[i] = readPublicKeyByIPname(ips.ips[array[i]]);
     }
+
+    free(array);
 }
 
 void newStart(int startSocket, struct clientNode **head, int numHops)
@@ -321,7 +323,7 @@ void newConnection(int serverSocket, struct clientNode **head)
 struct clientNode * addClientNode(struct clientNode **head, int in_socket, int out_socket, int nodeType)
 {
     struct clientNode *newConnectionNode;
-    if (nodeType == 1)
+    if (nodeType == -1)
         newConnectionNode =(struct clientNode *)calloc(1, sizeof(struct entryClientNode));
     else
         newConnectionNode =(struct clientNode *)calloc(1, sizeof(struct clientNode));
