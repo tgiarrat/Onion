@@ -314,9 +314,9 @@ void newConnection(int serverSocket, struct clientNode **head)
             curNode->nodeType = 0;
             curNode->port_pair.out_socket = tcpClientSetup(header->next_hop,outPort,0);
             header++;
+            len -= sizeof(struct onionHeader);
+            send(curNode->port_pair.out_socket, (char *) header, (size_t) len, 0);
         }
-        len -= sizeof(struct onionHeader);
-        send(curNode->port_pair.out_socket, (char *) header, (size_t) len, 0);
     }
 }
 

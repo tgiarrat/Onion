@@ -10,8 +10,8 @@ class SputHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         print self.client_address[0]
         with open(path, "wb") as dst:
             dst.write(self.rfile.read(length))
-            #with open("keys/list.txt", "a") as dst:
-            #    dst.write(self.client_address[0] +"\n")
+        #with open("keys/list.txt", "a") as dst:
+        #    dst.write(self.client_address[0] +"\n")
 
     def do_GET(self):
         """Serve a GET request."""

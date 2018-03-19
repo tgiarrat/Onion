@@ -10,7 +10,7 @@ net.hosts[6].cmd('python server.py &')
 for h in net.hosts:
     if h.name != 'h7':
         h.cmd('cd '+h.name);
-        h.cmd('../rsa_test 10.0.0.7')
+        h.cmd('../Onion 10.0.0.7 &')
 
 CLI(net);
 
