@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
     if (argc > 1)
     {
-        printf("%s\n", argv[1]);
+        printf("Server IP: %s\n", argv[1]);
 
         sscanf(argv[1],"%u.%u.%u.%u",&keyServerIP[0],&keyServerIP[1],&keyServerIP[2],&keyServerIP[3]);
         //keyServerIP[0] = atoi(argv[1]);
@@ -305,7 +305,7 @@ void newConnection(int serverSocket, struct clientNode **head)
         //decrypt
         len = decrypt(privateKey, (char *)buf, (char *)dec, (int)len);
         header = (struct onionHeader *) dec;
-        printf("here2:%d\n",header->next_hop[3]);
+//        printf("here2:%d\n",header->next_hop[3]);
         if (isDest(*header)) {
             header++;
             curNode->nodeType = 1;
